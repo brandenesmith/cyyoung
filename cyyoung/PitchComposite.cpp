@@ -22,15 +22,17 @@ void PitchComposite::setPosition(cv::Mat image, Position p)
 {
     if (image.empty())
     {
-        throw new std::runtime_error("The provided image is empty");
+        printf("Image should not be empty.");
+        throw new std::runtime_error("The provided image is empty.");
     }
     else if (image.rows != this->imageHeight)
     {
-        printf("Image height supposed to be %d. It was %d\n", this->imageHeight, image.rows);
+        printf("Image height supposed to be %d. It was %d.\n", this->imageHeight, image.rows);
         throw new std::runtime_error("The provided image doesn't have the correct height.");
     }
     else if (image.cols != this->imageWidth)
     {
+        printf("Image width supposed to be %d. It was %d.\n", this->imageWidth, image.cols);
         throw new std::runtime_error("The provided image doesn't have the correct width.");
     }
 
@@ -54,7 +56,7 @@ cv::Mat PitchComposite::compose()
     {
         if (images[p].empty())
         {
-            throw new std::runtime_error("All positions must have an image.");
+            return cv::Mat(); // return an empty matrix.
         }
     }
 

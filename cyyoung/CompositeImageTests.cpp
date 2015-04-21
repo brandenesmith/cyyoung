@@ -22,15 +22,15 @@ bool CompositeImageTests::testAllCases()
 
 bool CompositeImageTests::testValidUse2()
 {
-    cv::Mat a = cv::imread("/Users/mahi/Pictures/03832_blandfordroad_2560x1600.jpg");
-    cv::Mat b = cv::imread("/Users/mahi/Pictures/03625_eagleseye_2560x1600.jpg");
-    cv::Mat c = cv::imread("/Users/mahi/Pictures/03635_millinaround_2560x1600.jpg");
-    cv::Mat d = cv::imread("/Users/mahi/Pictures/03628_downtownseattleatdusk_2560x1600.jpg");
+    cv::Mat a = cv::imread("/Users/mahi/Desktop/post.png");
+    cv::Mat b = cv::imread("/Users/mahi/Desktop/tee.png");
+    cv::Mat c = cv::imread("/Users/mahi/Desktop/release.png");
+    cv::Mat d = cv::imread("/Users/mahi/Desktop/follow.png");
 
-    cv::resize(a, a, cv::Size(256,160));
-    cv::resize(b, b, cv::Size(256,160));
-    cv::resize(c, c, cv::Size(256,160));
-    cv::resize(d, d, cv::Size(256,160));
+//    cv::resize(a, a, cv::Size(,160));
+//    cv::resize(b, b, cv::Size(256,160));
+//    cv::resize(c, c, cv::Size(256,160));
+//    cv::resize(d, d, cv::Size(256,160));
 
 
     printf("a rows %d, cols %d\n", a.rows, a.cols);
@@ -44,15 +44,13 @@ bool CompositeImageTests::testValidUse2()
     printf("d stride %d\n", int(d.step));
 
 
-
-
     PitchComposite pc(a.cols, a.rows);
-
     pc.setPosition(a, PositionPost);
     pc.setPosition(b, PositionTee);
     pc.setPosition(c, PositionRelease);
     pc.setPosition(d, PositionFollow);
 
+    
     cv::imshow("ValidUse2", pc.compose());
 
     return true;
