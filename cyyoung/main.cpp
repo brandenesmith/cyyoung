@@ -16,33 +16,35 @@
 
 #include "CompositeImageTests.h"
 
+#include "OpticalFlow.h"
+
 cv::VideoCapture vc;
 
 int main(int argc, const char * argv[]) {
     //std::string file;
     //std::getline(std::cin, file);
 
-    std::cout << "Hello, World!\n";
-
-    CompositeImageTests cit;
-
-    if (cit.testAllCases())
-    {
-        printf("Composite image tests passed!\n");
-    }
-    else
-    {
-        printf("Composite image tests failed!\n");
-    }
-
-    cv::waitKey();
+//    std::cout << "Hello, World!\n";
+//
+//    CompositeImageTests cit;
+//
+//    if (cit.testAllCases())
+//    {
+//        printf("Composite image tests passed!\n");
+//    }
+//    else
+//    {
+//        printf("Composite image tests failed!\n");
+//    }
+//
+//    cv::waitKey();
 
 //    std::cout << "Hello, World!\n";
 //
 //    //Video v = Video("/Users/mahi/testvid.MP4");
 //
-//    cv::namedWindow("Video Output", CV_WINDOW_KEEPRATIO);
-//
+    cv::namedWindow("Video Output", CV_WINDOW_KEEPRATIO);
+
 //    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
 //        cv::VideoCapture vc;
 //        vc.open("/Users/mahi/testvid.MP4");
@@ -68,20 +70,32 @@ int main(int argc, const char * argv[]) {
 //            //});
 //        }
 //    });
-//
-//    cv::VideoCapture vc;
-//    vc.open("/Users/mahi/testvid.MP4");
-//
-//    while (true)
-//    {
-//        //std::ostringstream win;
-//        //win << "Video" << ++count;
-//
-//        cv::Mat frame;
-//        vc >> frame;
-//        cv::Mat copy = frame.clone();
-//        cv::imshow("Video Output", copy);
-//    }
+
+    cv::VideoCapture vc;
+    vc.open("/Users/mahi/shortsha2.mov");
+
+    OpticalFlow *oflow = NULL;
+
+    while (true)
+    {
+        //std::ostringstream win;
+        //win << "Video" << ++count;
+
+        cv::Mat frame;
+        vc >> frame;
+        cv::Mat copy = frame.clone();
+
+        if (NULL == oflow)
+        {
+            oflow = new OpticalFlow(copy);
+        }
+        else
+        {
+            oflow->feed(copy);
+        }
+
+        //cv::imshow("Video Output", copy);
+    }
 
     // insert code here...
     return 0;
