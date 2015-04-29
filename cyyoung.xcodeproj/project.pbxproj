@@ -66,6 +66,7 @@
 		147269841AE30B73001660CE /* OpticalFlow.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 147269821AE30B73001660CE /* OpticalFlow.cpp */; };
 		14890B801AC882AC00AF7E21 /* CompositeImageTests.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 14890B7E1AC882AC00AF7E21 /* CompositeImageTests.cpp */; };
 		14890B831AC882D400AF7E21 /* PitchComposite.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 14890B811AC882D400AF7E21 /* PitchComposite.cpp */; };
+		14894A441AEAB839004466E2 /* CYMath.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 14894A421AEAB839004466E2 /* CYMath.cpp */; };
 		14D0E2281AD05940006DB2A9 /* VideoSplitter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 14D0E2261AD05940006DB2A9 /* VideoSplitter.cpp */; };
 		14D0E22B1AD06455006DB2A9 /* VideoSplitterTests.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 14D0E2291AD06455006DB2A9 /* VideoSplitterTests.cpp */; };
 /* End PBXBuildFile section */
@@ -147,6 +148,8 @@
 		14890B7F1AC882AC00AF7E21 /* CompositeImageTests.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CompositeImageTests.h; sourceTree = "<group>"; };
 		14890B811AC882D400AF7E21 /* PitchComposite.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PitchComposite.cpp; sourceTree = "<group>"; };
 		14890B821AC882D400AF7E21 /* PitchComposite.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PitchComposite.h; sourceTree = "<group>"; };
+		14894A421AEAB839004466E2 /* CYMath.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = CYMath.cpp; sourceTree = "<group>"; };
+		14894A431AEAB839004466E2 /* CYMath.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CYMath.h; sourceTree = "<group>"; };
 		14D0E2261AD05940006DB2A9 /* VideoSplitter.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = VideoSplitter.cpp; sourceTree = "<group>"; };
 		14D0E2271AD05940006DB2A9 /* VideoSplitter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = VideoSplitter.h; sourceTree = "<group>"; };
 		14D0E2291AD06455006DB2A9 /* VideoSplitterTests.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = VideoSplitterTests.cpp; sourceTree = "<group>"; };
@@ -252,6 +255,8 @@
 				147269831AE30B73001660CE /* OpticalFlow.h */,
 				14D0E2291AD06455006DB2A9 /* VideoSplitterTests.cpp */,
 				14D0E22A1AD06455006DB2A9 /* VideoSplitterTests.h */,
+				14894A421AEAB839004466E2 /* CYMath.cpp */,
+				14894A431AEAB839004466E2 /* CYMath.h */,
 			);
 			path = cyyoung;
 			sourceTree = "<group>";
@@ -381,6 +386,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				14D0E2281AD05940006DB2A9 /* VideoSplitter.cpp in Sources */,
+				14894A441AEAB839004466E2 /* CYMath.cpp in Sources */,
 				14890B801AC882AC00AF7E21 /* CompositeImageTests.cpp in Sources */,
 				145FBF5E1ABDCDE000A0DDE1 /* Segment.cpp in Sources */,
 				14890B831AC882D400AF7E21 /* PitchComposite.cpp in Sources */,
@@ -428,7 +434,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 10.10;
 				MTL_ENABLE_DEBUG_INFO = YES;
-				ONLY_ACTIVE_ARCH = YES;
+				ONLY_ACTIVE_ARCH = NO;
 				SDKROOT = macosx;
 			};
 			name = Debug;
@@ -463,6 +469,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 10.10;
 				MTL_ENABLE_DEBUG_INFO = NO;
+				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
 			};
 			name = Release;
@@ -479,6 +486,7 @@
 					/usr/local/lib/,
 					/usr/local/Cellar/opencv/2.4.9/lib,
 				);
+				ONLY_ACTIVE_ARCH = NO;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
@@ -495,6 +503,7 @@
 					/usr/local/lib/,
 					/usr/local/Cellar/opencv/2.4.9/lib,
 				);
+				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;

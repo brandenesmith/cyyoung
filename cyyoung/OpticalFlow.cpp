@@ -8,34 +8,66 @@
 
 #include "OpticalFlow.h"
 
-void cvt2gray(cv::Mat &img)
+
+
+float radianAngle(cv::Point2f p1, cv::Point2f p2)
 {
-    switch (img.channels())
-    {
-        case 1:
-            // Already gray.
-            return;
-        case 3:
-            cv::cvtColor(img, img, CV_BGR2GRAY);
-            return;
-        case 4:
-            cv::cvtColor(img, img, CV_BGRA2GRAY);
-            return;
-        default:
-            printf("Input image bad\n");
-            exit(1);
-            return;
-    }
+    return atan2f(p2.y - p1.y, p2.x - p1.x);
 }
 
-OpticalFlow::OpticalFlow(cv::Mat &firstFrame)
+//void cvt2gray(cv::Mat &img)
+//{
+//    switch (img.channels())
+//    {
+//        case 1:
+//            // Already gray.
+//            return;
+//        case 3:
+//            cv::cvtColor(img, img, CV_BGR2GRAY);
+//            return;
+//        case 4:
+//            cv::cvtColor(img, img, CV_BGRA2GRAY);
+//            return;
+//        default:
+//            printf("Input image bad\n");
+//            exit(1);
+//            return;
+//    }
+//}
+
+cv::Mat grayRoiCopy(cv::Mat &colorFrame, cv::Rect roi)
 {
-    cvt2gray(firstFrame);
-    this->prevFrame = firstFrame;
+    if (colorFrame.empty())
+    {
+        printf("Do not feed empty images.");
+        throw new std::runtime_error("Do not feed empty images.");
+    }
+
+    cv::Mat copy;
+    switch (colorFrame.channels())
+    {
+        default:
+            copy = colorFrame.clone();
+        case 4:
+            cv::cvtColor(colorFrame, copy, CV_BGRA2GRAY);
+            break;
+        case 3:
+            cv::cvtColor(colorFrame, copy, CV_BGR2GRAY);
+            break;
+    }
+
+    static cv::Rect sroi = roi;
+    return copy(sroi);
+}
+
+OpticalFlow::OpticalFlow(cv::Mat &firstFrame, cv::Rect roi)
+{
+    cv::Mat copy = grayRoiCopy(firstFrame, roi);
+    this->prevFrame = copy;
     cv::goodFeaturesToTrack(this->prevFrame,
                             this->prevFeatures,
                             MAX_FEATURES,
-                            0.01,
+                            MIN_FEATURE_DISTANCE,
                             10);
 
     this->tc = cvTermCriteria(CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, 20, 0.3);
@@ -45,44 +77,22 @@ cv::Mat OpticalFlow::drawMotion(MotionVec mv, cv::Mat &image)
 {
     // Convert image to HSV so we can see the lines better
     // It is easier to work with colors using HSV
-    cv::Mat imageColor;
-    cv::cvtColor(image, imageColor, CV_GRAY2BGR);
-    cv::cvtColor(imageColor, imageColor, CV_BGR2HSV);
+    cv::Mat imageColor = image.clone();
+    switch(imageColor.channels())
+    {
+        case 1: cv::cvtColor(imageColor, imageColor, CV_GRAY2BGR); // intermediate step.
+        case 3: cv::cvtColor(imageColor, imageColor, CV_BGR2HSV);
+    }
 
-    const double pi = 3.14159265358979323846;
+    const float twopi = 2.0*3.14159265358979323846;
     for (int i = 0; i < mv.size(); i++)
     {
-        cv::Point2f from, to;
-        from = mv[i].first;
-        to = mv[i].second;
+        const float angle = radianAngle(mv[i].first, mv[i].second);
 
-        // Get color based from 0 to 2pi
-        cv::Point2f toNorm; // normalize |from| to 0,0;
-        toNorm = to;
-        toNorm.x -= from.x;
-        toNorm.y -= from.y;
+        // get percentage of full circle.
+        const float anglePercent = angle / (twopi);
 
-        double angle;
-        if (0 == toNorm.x)
-        {
-            if (0 > toNorm.y)
-            {
-                angle = (3.0*pi) / 2.0;
-            }
-            else
-            {
-                angle = pi/2.0;
-            }
-        }
-        else
-        {
-            angle = tan(double(toNorm.y)/double(toNorm.x));
-        }
-
-        angle /= 2*pi; // get percentage of full circle.
-        //angle += 0.25;
-
-        cv::Scalar colorHSV = {angle*255, 255, 255};
+        const cv::Scalar colorHSV = { anglePercent*255.f, 255.f, 255.f };
 
         //cv::Point2f extended = {mv[i].second.x * 5, mv[i].second.y*5};
 
@@ -95,20 +105,17 @@ cv::Mat OpticalFlow::drawMotion(MotionVec mv, cv::Mat &image)
     return imageColor;
 }
 
-float distance(cv::Point2f p1, cv::Point2f p2)
-{
-    return sqrtf((p2.x-p1.x)*(p2.x-p1.x) +
-                 (p2.y-p1.y)*(p2.y-p1.y));
-}
 
-
-MotionVec OpticalFlow::feed(cv::Mat &img)
+MotionVec OpticalFlow::feed(cv::Mat img)
 {
     MotionVec motion = MotionVec();
 
-    if (1 != img.channels())
+    const cv::Rect emptyRect;
+    cv::Mat copy = grayRoiCopy(img, emptyRect);
+    if (1 != copy.channels())
     {
-        cvt2gray(img);
+        printf("Should never reach here");
+        exit(5);
     }
 
     // 0 if feature doesn't correspond to points.
@@ -119,14 +126,13 @@ MotionVec OpticalFlow::feed(cv::Mat &img)
 
     this->nextFeatures.clear();
     cv::calcOpticalFlowPyrLK(this->prevFrame,
-                             img,
+                             copy,
                              this->prevFeatures,
                              this->nextFeatures,
                              status,
                              err);
 
     //CV_DbgAssert(50 == status.size());
-    std::vector<cv::Point2f> replacements;
 
     std::vector<float> magnitudes;
     for (int i = 0; i < status.size(); i++)
@@ -136,27 +142,28 @@ MotionVec OpticalFlow::feed(cv::Mat &img)
             cv::Point2f pp, pn;
             pp = this->prevFeatures[i];
             pn = this->nextFeatures[i];
+
+            //if (3 < distance(pp,pn))
+            //{
+                motion.push_back(std::pair<cv::Point2f, cv::Point2f>(pp, pn));
+            //}
+
             //float dist = distance(pp, pn);
             //magnitudes.push_back(dist);
-            motion.push_back(std::pair<cv::Point2f, cv::Point2f>(pp, pn));
         }
-//        else
-//        {
-//            this->nextFeatures[i] = replacements[i];
-//        }
     }
 
 
 
 
     // Cleanup.
-    this->prevFrame = img;
+    this->prevFrame = copy;
     //this->prevFeatures = this->nextFeatures;
 
     cv::goodFeaturesToTrack(this->prevFrame,
                             this->prevFeatures,
                             MAX_FEATURES,
-                            0.01,
+                            MIN_FEATURE_DISTANCE,
                             10);
 
 
@@ -173,8 +180,8 @@ MotionVec OpticalFlow::feed(cv::Mat &img)
 
     #if !RELEASE
     // Show the motion in a new window.
-    cv::imshow("Motion", drawMotion(motion, img));
-    cv::waitKey();
+    //cv::imshow("Motion", drawMotion(motion, img));
+    //cv::waitKey();
     #endif
 
     return motion;
