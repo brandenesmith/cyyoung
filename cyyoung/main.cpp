@@ -15,6 +15,9 @@
 
 #include "OpticalFlow.h"
 
+#define WRITE_VIDEO_OUTPUT_AND_CLEAN_DIR 0
+
+
 /**
  * Distance between motion points.
  */
@@ -25,9 +28,6 @@
  */
 #define MOTION_HISTORY_IMAGE 4
 
-//#define SKIP_NUM_FRAMES 440 // Pitch 1 for output4_480p.mp4
-  #define SKIP_NUM_FRAMES 810 // Pitch 2 for output4_480p.mp4
-//#define SKIP_NUM_FRAMES 206
 
 /**
  * Number of tick marks in the compas.
@@ -40,9 +40,27 @@
 
 
 #define VIDEO_LOC "/Users/mahi/100GOPRO/output4_480p.mp4"
+#define INPUT_VIDEO_FPS 30
+#define SKIP_NUM_FRAMES 206
+
+
+//#define VIDEO_LOC "/Users/mahi/100GOPRO/output5_480p.mp4"
+//#define INPUT_VIDEO_FPS 60
+//#define SKIP_NUM_FRAMES 2
+
+//#define VIDEO_LOC "/Users/mahi/100GOPRO/output6_480p.mp4"
+//#define INPUT_VIDEO_FPS 60
+//#define SKIP_NUM_FRAMES 90
+
 //#define VIDEO_LOC "/Users/mahi/Desktop/trimmedbes.MP4"
+//#define INPUT_VIDEO_FPS 30
+//#define SKIP_NUM_FRAMES 440 // Pitch 1 for output4_480p.mp4
+//#define SKIP_NUM_FRAMES 810 // Pitch 2 for output4_480p.mp4
+
 
 #define WRITE_ABSOLUTE_DIR "/Users/mahi/hoged_frames3/"
+
+#define OUTPUT_VIDEO_NAME "output.mp4"
 
 
 const float centerX = 100.f, centerY = 100.f, radius = 22;
@@ -142,6 +160,42 @@ cv::Rect detectFace(cv::Mat &frame)
 }
 
 
+//// Uses hog to find the body and then sees if there is no motion
+//// in the motion vector within the body.
+//cv::Rect findValidHuman(cv::HOGDescriptor &hogd, cv::Mat &frame)
+//{
+//    cv::Mat gray = frame;
+//    switch (frame.channels())
+//    {
+//        case 1: break;
+//        case 3: cv::cvtColor(gray, gray, CV_BGR2GRAY); break;
+//        case 4: cv::cvtColor(gray, gray, CV_BGRA2GRAY); break;
+//        default: throw new std::runtime_error("Invalid channel count");
+//    }
+//
+//    std::vector<cv::Rect> locations;
+//    hogd.detectMultiScale(gray, locations);
+//
+//    if (0 != locations.size())
+//    {
+//        for (int i = 0; i < locations.size(); i++)
+//        {
+//            drawBWRectangle(frame, locations[i], true);
+//
+//            printf("Location[%d] = { %0.2f, %0.2f, %0.2f, %0.2f }\n",
+//                   i,
+//                   float(locations[i].x),
+//                   float(locations[i].y),
+//                   float(locations[i].width),
+//                   float(locations[i].height));
+//        }
+//
+//        return largestRectangle(locations);
+//    }
+//
+//    return cv::Rect(0,0,0,0);
+//}
+
 // Uses hog to find the body and then sees if there is no motion
 // in the motion vector within the body.
 cv::Rect findValidHuman(cv::HOGDescriptor &hogd, cv::Mat &frame)
@@ -155,6 +209,10 @@ cv::Rect findValidHuman(cv::HOGDescriptor &hogd, cv::Mat &frame)
         default: throw new std::runtime_error("Invalid channel count");
     }
 
+    double scale = 240.0 / gray.rows;
+
+    cv::resize(gray, gray, cv::Size(gray.cols*scale,gray.rows*scale));
+
     std::vector<cv::Rect> locations;
     hogd.detectMultiScale(gray, locations);
 
@@ -162,17 +220,28 @@ cv::Rect findValidHuman(cv::HOGDescriptor &hogd, cv::Mat &frame)
     {
         for (int i = 0; i < locations.size(); i++)
         {
-            drawBWRectangle(frame, locations[i], true);
+            cv::Rect drawn = locations[i];
+            drawn.x /= scale;
+            drawn.y /= scale;
+            drawn.width /= scale;
+            drawn.height /= scale;
+
+            drawBWRectangle(frame, drawn, true);
 
             printf("Location[%d] = { %0.2f, %0.2f, %0.2f, %0.2f }\n",
                    i,
-                   float(locations[i].x),
-                   float(locations[i].y),
-                   float(locations[i].width),
-                   float(locations[i].height));
+                   float(locations[i].x/scale),
+                   float(locations[i].y/scale),
+                   float(locations[i].width/scale),
+                   float(locations[i].height/scale));
         }
 
-        return largestRectangle(locations);
+        cv::Rect scaled = largestRectangle(locations);
+        scaled.x /= scale;
+        scaled.y /= scale;
+        scaled.width /= scale;
+        scaled.height /= scale;
+        return scaled;
     }
 
     return cv::Rect(0,0,0,0);
@@ -416,19 +485,142 @@ unsigned int frameNumberOfFollow(PitchFrameWindow window, std::vector<MotionVec>
 }
 
 
+inline double correctRadians(std::pair<cv::Point2f, cv::Point2f> motion)
+{
+    double angle = atan2f(0 - (motion.second.y - motion.first.y), motion.second.x - motion.first.x);
+    if (angle < 0)
+    {
+        angle = 2*3.14159 + angle;
+    }
+    return angle;
+}
+
+
+bool pitcherLegUp2(MotionVec &mv, cv::Rect stationaryRect)
+{
+    double minGoodPercent = 0.45;
+    double min = 0.7853981634;
+    double max = 3.14159;
+
+    int valid = 1;
+    int good = 0;
+
+
+    for (int i = 0; i < mv.size(); i++)
+    {
+        if (movementWithinRectangle(mv[i] , stationaryRect ))
+        {
+            valid++;
+
+            double angle = correctRadians(mv[i]);
+
+            if (min < angle && angle < max)
+            {
+                good++;
+            }
+        }
+    }
+
+    const double percent = double(good)/double(valid);
+    printf("Good %d, Valid %d, Percent %0.2f\n", good, valid, percent);
+    
+    return percent > minGoodPercent;
+}
+
+
+bool pitcherLegUp(MotionVec &mv, cv::Rect stationaryRect, const double minPercentUp)
+{
+    double min = 0.7853981634;
+    double max = 3.14159;
+
+    int valid = 1;
+    int good = 0;
+
+
+    for (int i = 0; i < mv.size(); i++)
+    {
+        if (movementWithinRectangle(mv[i] , stationaryRect ))
+        {
+            valid++;
+
+            double angle = correctRadians(mv[i]);
+
+            if (min < angle && angle < max)
+            {
+                good++;
+            }
+        }
+    }
+
+    const double percent = double(good)/double(valid);
+    printf("Good %d, Valid %d, Percent %0.2f\n", good, valid, percent);
+
+    return percent > minPercentUp;
+}
+
+
+double averageAngleWithinRect(MotionVec &mv, cv::Rect r)
+{
+    // Create a unit vector and then find its angle.
+    float xtot = 0, ytot = 0;
+
+    for (int i = 0; i < mv.size(); i++)
+    {
+        xtot += mv[i].second.x - mv[i].first.x;
+        ytot += mv[i].second.y - mv[i].first.y;
+    }
+    return correctRadians({cv::Point2f(0.f,0.f),cv::Point2f(xtot,ytot)});
+}
+
+
+// Goes back in time from the release and tries to find the tee position.
+unsigned int pitcherTeeFrameNumber(std::vector<MotionVec> &motions,
+                                   cv::Rect stationaryRect,
+                                   unsigned int post)
+{
+    cv::Rect body(stationaryRect.x + stationaryRect.width/2,
+                  stationaryRect.y,
+                  stationaryRect.width * 0.75,
+                  stationaryRect.height);
+
+    std::vector<double> averages;
+
+    size_t size = motions.size();
+    for (size_t i = size-2; i < post; i--)
+    {
+        averages.push_back(averageAngleWithinRect(motions[i], body));
+        printf("Frame %lu average: %0.2f\n", i, averages[i]);
+    }
+
+    return 0;
+}
+
+
+#pragma mark MAIN
+
 int main(int argc, const char * argv[])
 {
+    std::string path;
+    if (2 <= argc)
+    {
+        path = argv[1];
+    }
+    else
+    {
+        path = VIDEO_LOC;
+    }
+
     // |pitches| is what we use to generate composites at the end!
     std::vector<SegmentedPitchFrames> pitches;
 
     cv::HOGDescriptor hogd;
     hogd.setSVMDetector(cv::HOGDescriptor::getDefaultPeopleDetector());
-    std::vector<MotionVec> timeMotionVecVec;
-    std::vector<MotionVec> historyMotionVecVec;
     cv::VideoCapture vc;
     cv::Mat firstFrame;
-    vc.open(VIDEO_LOC);
-    //vc.open("/Users/mahi/Desktop/trimmedbes.MP4");
+    vc.open(path);
+
+    printf("Frames per second %0.2f\n", vc.get(CV_CAP_PROP_FPS));
+
     //vc.open(0);
     vc.grab();
     vc.retrieve(firstFrame);
@@ -446,16 +638,22 @@ int main(int argc, const char * argv[])
     cv::namedWindow("Computer Vision", CV_WINDOW_KEEPRATIO);
     cv::namedWindow("Time Motion", CV_WINDOW_KEEPRATIO);
 
-
+    std::vector<MotionVec> timeMotionVecVec;
+    std::vector<MotionVec> historyMotionVecVec;
     while (vc.grab())
     {
         const unsigned int frameNumber = countFrame();
-        timeMotionVecVec.push_back({{{0.f,0.f},{0.f,0.f}}});
+        //timeMotionVecVec.push_back({{{0.f,0.f},{0.f,0.f}}});
 
         printf("Frame number %d\n", frameNumber);
 
         // This is for convienence.
         if (SKIP_NUM_FRAMES > frameNumber)
+        {
+            continue;
+        }
+
+        if (INPUT_VIDEO_FPS == 60 && 0 == frameNumber%2)
         {
             continue;
         }
@@ -466,7 +664,7 @@ int main(int argc, const char * argv[])
             break;
         }
 
-
+        // perform optical flow.
         MotionVec mv = oflow.feed(frame);
 
         MotionVec mvThresholded, mvDrawn, mvHistory;
@@ -482,19 +680,18 @@ int main(int argc, const char * argv[])
             }
         }
 
+        // Push the thresholded values into an array of all motion vectors.
+        timeMotionVecVec.push_back(mvThresholded);
+
         for (int i = 0; i < mvThresholded.size(); i++)
         {
             mvHistory.push_back(mvThresholded[i]);
             mvDrawn.push_back(mvThresholded[i]);
         }
 
-        // Only runs if not zero
-        // DRAW THE MOTION HISTORY IMAGE
-        timeMotionVecVec.push_back(mvThresholded);
-
         const size_t stop = timeMotionVecVec.size()-1;
         size_t i = stop - MOTION_HISTORY_IMAGE;
-        for (; stop != i; i++)
+        for (; stop != i; i--)
         {
             for (int j = 0; j < timeMotionVecVec[i].size(); j++)
             {
@@ -503,17 +700,12 @@ int main(int argc, const char * argv[])
             }
         }
 
+        // Push the motion history into the history vector.
         historyMotionVecVec.push_back(mvHistory);
-
-        // DRAW THE COMPASS.
-        for (unsigned int i = 0; i < COMPASS_ROSE; i++)
-        {
-            mvDrawn.push_back(compass[i]);
-        }
 
 
         // Find the pitcher.
-        cv::Rect rectHuman = findValidHuman(hogd, frame);
+        cv::Rect rectHuman(0,0,0,0);
         //cv::Rect rectHuman = detectFace(frame);
         bool foundNewRectangle = false;
         // divide by zero error mitigation.
@@ -521,8 +713,13 @@ int main(int argc, const char * argv[])
         static unsigned int framesSinceStationary = 0;
         double displacement = 0;
 
+        if (pitcherStationary(drawnBorder1, historyMotionVecVec.back()))
+        {
+            rectHuman = findValidHuman(hogd, frame);
+        }
+
         const double rectShrinkTolerance = 0.75;
-        bool validNewRect = double(rectHuman.height) / drawnBorder1.height > rectShrinkTolerance;
+        const bool validNewRect = double(rectHuman.height) / drawnBorder1.height > rectShrinkTolerance;
         if (rectHuman.x != 0 && rectHuman.y != 0 && rectHuman.width != 0 && rectHuman.height != 0 && validNewRect)
         {
             foundNewRectangle = true;
@@ -546,16 +743,24 @@ int main(int argc, const char * argv[])
         }
 
 
-        static bool foundPost = false, foundLegDown = false, foundTee = false;
-        static bool foundRelease = false, foundFollow = false;
-        static unsigned int postFrameNumber = 0, teeFrameNumber = 0;
-        static unsigned int releaseFrameNumber = 0, followFrameNumber = 0;
+        static bool foundLegUpBeforePost = false,
+                    foundPost = false,
+                    foundTee = false,
+                    foundRelease = false,
+                    foundFollow = false;
 
-        if (foundNewRectangle && pitcherStationary(rectHuman, mvHistory))
+        static unsigned int postFrameNumber = 0,
+                            teeFrameNumber = 0,
+                            releaseFrameNumber = 0,
+                            followFrameNumber = 0;
+
+
+
+        if (pitcherStationary(drawnBorder1, mvHistory))
         {
             framesSinceStationary = 0;
+            foundLegUpBeforePost = false;
             foundPost = false;
-            foundLegDown = false;
             foundTee = false;
             foundRelease = false;
             foundFollow = false;
@@ -564,9 +769,16 @@ int main(int argc, const char * argv[])
         {
             framesSinceStationary++;
 
+
+            if (!foundLegUpBeforePost && framesSinceStationary > 4)
+            {
+                foundLegUpBeforePost = pitcherLegUp(historyMotionVecVec.back(), drawnBorder1, 0.75);
+            }
+
+
+
             // FIND THE POST POSITION
-            const unsigned int lowMotionBuffer = 5;
-            if (!foundPost && framesSinceStationary > lowMotionBuffer)
+            if (foundLegUpBeforePost && !foundPost)
             {
                 if (pitcherPastPost(historyMotionVecVec.back(), drawnBorder1))
                 {
@@ -580,22 +792,57 @@ int main(int argc, const char * argv[])
                 }
             }
 
-            if (foundPost && !foundTee)
+
+            if (foundPost && !foundRelease)
             {
-                foundTee = pitcherPastLegDown(mv, drawnBorder1);
-                teeFrameNumber = frameNumber;
+                if (pitcherLegUp(timeMotionVecVec.back(), drawnBorder1, 0.45))
+                {
+                    printf("Found leg up again");
+                    foundRelease = true;
+                    releaseFrameNumber = frameNumber;
+                }
             }
 
-            if (foundPost && foundTee && !foundRelease)
+
+            if (foundPost && foundRelease && !foundTee)
             {
-                foundRelease = pitcherAtReleasePosition(timeMotionVecVec.back(), drawnBorder1);
-                releaseFrameNumber = frameNumber;
+                printf("\n\nMotion History\n");
+                teeFrameNumber = pitcherTeeFrameNumber(historyMotionVecVec,
+                                                       drawnBorder1,
+                                                       postFrameNumber);
+
+                printf("\n\nRaw History\n");
+                teeFrameNumber = pitcherTeeFrameNumber(timeMotionVecVec,
+                                                       drawnBorder1,
+                                                       postFrameNumber);
+
+                foundTee = true;
             }
 
-            if (foundRelease)
-            {
-                printf("Found release");
-            }
+
+
+
+//            if (foundPost && !foundTee)
+//            {
+//                foundTee = pitcherPastLegDown(mv, drawnBorder1);
+//                teeFrameNumber = frameNumber;
+//            }
+
+//            if (foundPost && foundTee && !foundRelease)
+//            {
+//                foundRelease = pitcherAtReleasePosition(timeMotionVecVec.back(), drawnBorder1);
+//                releaseFrameNumber = frameNumber;
+//
+//                if (foundRelease)
+//                {
+//                    printf("Found release.\n");
+//                }
+//            }
+//
+//            if (foundPost && foundTee && foundRelease && !foundFollow)
+//            {
+//                printf("Finding follow through.\n");
+//            }
 
         }
 
@@ -609,11 +856,15 @@ int main(int argc, const char * argv[])
         char outPath[50];
         bzero(outPath, 50);
         sprintf(outPath, "%sframe%06d.png", WRITE_ABSOLUTE_DIR, frameNumber);
-//        cv::imshow("Computer Vision", frame);
 
         cv::Mat frameClone = frame;
         cv::imshow("Time Motion", oflow.drawMotion(timeMotionVecVec.back(), frameClone));
 
+        // DRAW THE COMPASS.
+        for (unsigned int i = 0; i < COMPASS_ROSE; i++)
+        {
+            mvDrawn.push_back(compass[i]);
+        }
 
         cv::Mat drawnFrame = oflow.drawMotion(mvDrawn, frame);
 
@@ -639,21 +890,33 @@ int main(int argc, const char * argv[])
             cv::putText(outputFrame, text, cv::Point(0,30), CV_FONT_HERSHEY_PLAIN, 1, cv::Scalar(0,0,0));
         }
 
-//        if (displayFootDownNotification)
-//        {
-//            bzero(text, 100);
-//            sprintf(text, "PITCHER FOOT DOWN");
-//            cv::putText(outputFrame, text, cv::Point(drawnBorder1.x, drawnBorder1.y + 20), CV_FONT_HERSHEY_PLAIN, 1, cv::Scalar(0,255,0));
-//        }
 
+        cv::imshow("Computer Vision", outputFrame);
+
+        #if WRITE_VIDEO_OUTPUT_AND_CLEAN_DIR
         bzero(text, 100);
         sprintf(text, "Displacement: %0.2f pixels", displacement);
         cv::putText(outputFrame, text, cv::Point(0, 50), CV_FONT_HERSHEY_PLAIN, 1, cv::Scalar(0,0,0));
-
-        cv::imshow("Computer Vision", outputFrame);
-        //cv::imwrite(cv::string(outPath), outputFrame);
+        cv::imwrite(cv::string(outPath), outputFrame);
         printf("Wrote:%s\n", outPath);
+        #endif
+
+        printf("Done with frame %d\n", frameNumber);
     }
+
+    // Stitch all the frames together and output into a new video.
+    #if WRITE_VIDEO_OUTPUT_AND_CLEAN_DIR
+    // Use ffmpeg to stitch the frames together.
+    char ffmpegSystemCall[500];
+    bzero(ffmpegSystemCall, 500);
+    sprintf(ffmpegSystemCall, "ffmpeg -framerate 15 -i %sframe%%06d.png -c:v libx264 -r 15 -pix_fmt yuv420p %s%s",
+            WRITE_ABSOLUTE_DIR, WRITE_ABSOLUTE_DIR, OUTPUT_VIDEO_NAME);
+    system(ffmpegSystemCall);
+
+    // Clean up the folder
+    bzero(ffmpegSystemCall, 500);
+    sprintf(ffmpegSystemCall, "rm %sframe*.png", WRITE_ABSOLUTE_DIR);
+    #endif
 
     vc.release();
     return 0;

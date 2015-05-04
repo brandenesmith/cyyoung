@@ -12,7 +12,12 @@
 
 float radianAngle(cv::Point2f p1, cv::Point2f p2)
 {
-    return atan2f(p2.y - p1.y, p2.x - p1.x);
+    double angle = atan2f(p2.y - p1.y, p2.x - p1.x);
+    if (angle < 0)
+    {
+        angle = 2*3.14159 + angle;
+    }
+    return angle;
 }
 
 //void cvt2gray(cv::Mat &img)
@@ -145,7 +150,7 @@ MotionVec OpticalFlow::feed(cv::Mat img)
 
             //if (3 < distance(pp,pn))
             //{
-                motion.push_back(std::pair<cv::Point2f, cv::Point2f>(pp, pn));
+                motion.push_back(std::pair< cv::Point2f, cv::Point2f >(pp, pn));
             //}
 
             //float dist = distance(pp, pn);
