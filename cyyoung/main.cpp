@@ -13,7 +13,7 @@
 
 #include "PitchComposite.h"
 
-#define WRITE_VIDEO_OUTPUT_AND_CLEAN_DIR 0
+#define WRITE_TO_FILE_SYSTEM 1
 
 
 /**
@@ -33,32 +33,6 @@
 #define COMPASS_ROSE 4
 
 #define MAX_FRAMES 100000
-
-#define FACE_DETECTOR_LOC "/Users/mahi/Downloads/opencv-2.4.9/data/haarcascades/haarcascade_frontalface_alt.xml"
-
-
-#define VIDEO_LOC "/Users/mahi/100GOPRO/output4_480p.mp4"
-#define INPUT_VIDEO_FPS 30
-#define SKIP_NUM_FRAMES 400
-
-
-//#define VIDEO_LOC "/Users/mahi/100GOPRO/output5_480p.mp4"
-//#define INPUT_VIDEO_FPS 60
-//#define SKIP_NUM_FRAMES 2
-
-//#define VIDEO_LOC "/Users/mahi/100GOPRO/output6_480p.mp4"
-//#define INPUT_VIDEO_FPS 60
-//#define SKIP_NUM_FRAMES 90
-
-//#define VIDEO_LOC "/Users/mahi/Desktop/trimmedbes.MP4"
-//#define INPUT_VIDEO_FPS 30
-//#define SKIP_NUM_FRAMES 440 // Pitch 1 for output4_480p.mp4
-//#define SKIP_NUM_FRAMES 810 // Pitch 2 for output4_480p.mp4
-
-
-#define WRITE_ABSOLUTE_DIR "/Users/mahi/hoged_frames3/"
-
-#define OUTPUT_VIDEO_NAME "output.mp4"
 
 
 const float centerX = 100.f, centerY = 100.f, radius = 22;
@@ -80,19 +54,7 @@ int countFrame()
     return frameCount;
 }
 
-//MotionVec shiftMotionVec(const MotionVec mv, cv::Rect roi)
-//{
-//    MotionVec shifted;
-//    // Shift |mv| by the |roi|. Save computation by doing it only on creation.
-//    for (int i = 0; i < mv.size(); i++)
-//    {
-//        const cv::Point2f first = mv[i].first;
-//        const cv::Point2f second = mv[i].second;
-//        shifted.push_back({{first.x+roi.x,first.y+roi.y},{second.x+roi.x,second.y+roi.y}});
-//    }
-//    return shifted;
-//}
-
+// Draws either a black or white rectangle on the frame.
 void drawBWRectangle(cv::Mat &frame, cv::Rect r, bool black)
 {
     cv::Point2f topLeft, topRight, bottomLeft, bottomRight;
@@ -110,13 +72,13 @@ void drawBWRectangle(cv::Mat &frame, cv::Rect r, bool black)
 }
 
 // For convenience.
-cv::Rect largestRectangle(std::vector<cv::Rect> humans)
+cv::Rect largestRectangle(std::vector<cv::Rect> rects)
 {
     int maxIndex = 0;
     double maxArea = 0;
-    for (int i = 0; i < humans.size(); i++)
+    for (int i = 0; i < rects.size(); i++)
     {
-        double area = humans[i].width * humans[i].height;
+        double area = rects[i].width * rects[i].height;
         if (area > maxArea)
         {
             maxArea = area;
@@ -124,78 +86,13 @@ cv::Rect largestRectangle(std::vector<cv::Rect> humans)
         }
     }
 
-    return humans[maxIndex];
-}
-
-cv::CascadeClassifier face_classifier;
-
-cv::Rect detectFace(cv::Mat &frame)
-{
-    cv::Mat gray;
-    switch (frame.channels())
-    {
-        case 1: gray = frame; break;
-        case 3: cv::cvtColor(frame, gray, CV_BGR2GRAY); break;
-        case 4: cv::cvtColor(frame, gray, CV_BGRA2GRAY); break;
-    }
-
-    std::vector<cv::Rect> faces;
-    face_classifier.detectMultiScale( gray, faces, 1.1, 2, 0|CV_HAAR_SCALE_IMAGE, cv::Size(30, 30) );
-
-    for (int i = 0; i < faces.size(); i++)
-    {
-        drawBWRectangle(frame, faces[i], true);
-    }
-
-    if (0 != faces.size())
-    {
-        return largestRectangle(faces);
-    }
-    else
-    {
-        return cv::Rect(0,0,0,0);
-    }
+    return rects[maxIndex];
 }
 
 
-//// Uses hog to find the body and then sees if there is no motion
-//// in the motion vector within the body.
-//cv::Rect findValidHuman(cv::HOGDescriptor &hogd, cv::Mat &frame)
-//{
-//    cv::Mat gray = frame;
-//    switch (frame.channels())
-//    {
-//        case 1: break;
-//        case 3: cv::cvtColor(gray, gray, CV_BGR2GRAY); break;
-//        case 4: cv::cvtColor(gray, gray, CV_BGRA2GRAY); break;
-//        default: throw new std::runtime_error("Invalid channel count");
-//    }
-//
-//    std::vector<cv::Rect> locations;
-//    hogd.detectMultiScale(gray, locations);
-//
-//    if (0 != locations.size())
-//    {
-//        for (int i = 0; i < locations.size(); i++)
-//        {
-//            drawBWRectangle(frame, locations[i], true);
-//
-//            printf("Location[%d] = { %0.2f, %0.2f, %0.2f, %0.2f }\n",
-//                   i,
-//                   float(locations[i].x),
-//                   float(locations[i].y),
-//                   float(locations[i].width),
-//                   float(locations[i].height));
-//        }
-//
-//        return largestRectangle(locations);
-//    }
-//
-//    return cv::Rect(0,0,0,0);
-//}
-
-// Uses hog to find the body and then sees if there is no motion
-// in the motion vector within the body.
+// Uses the Histogram of Oriented Gradients to find the pitcher within the frame.
+// It only works well when the pitcher is standing straight up and facing the camera.
+// Returns a zero rect if no valid human is found.
 cv::Rect findValidHuman(cv::HOGDescriptor &hogd, cv::Mat &frame)
 {
     cv::Mat gray = frame;
@@ -207,8 +104,10 @@ cv::Rect findValidHuman(cv::HOGDescriptor &hogd, cv::Mat &frame)
         default: throw new std::runtime_error("Invalid channel count");
     }
 
+    // In our testing 240p gets the fastest and most accurate results.
+    // Keeping the original aspect ratio detects the pitcher less and
+    // becomes the biggest bottleneck in the program.
     double scale = 240.0 / gray.rows;
-
     cv::resize(gray, gray, cv::Size(gray.cols*scale,gray.rows*scale));
 
     std::vector<cv::Rect> locations;
@@ -216,6 +115,8 @@ cv::Rect findValidHuman(cv::HOGDescriptor &hogd, cv::Mat &frame)
 
     if (0 != locations.size())
     {
+        // Draw every rectangle found so the user can see how many bad rectangles
+        // are not fully surrounding the pitcher.
         for (int i = 0; i < locations.size(); i++)
         {
             cv::Rect drawn = locations[i];
@@ -234,6 +135,7 @@ cv::Rect findValidHuman(cv::HOGDescriptor &hogd, cv::Mat &frame)
                    float(locations[i].height/scale));
         }
 
+        // Scale up the largest location since we scaled down before.
         cv::Rect scaled = largestRectangle(locations);
         scaled.x /= scale;
         scaled.y /= scale;
@@ -266,19 +168,22 @@ inline bool movementWithinRectangle(std::pair<cv::Point2f, cv::Point2f> movement
     return pointWithinRectangle(r, movement.first) && pointWithinRectangle(r, movement.second);
 }
 
-bool pitcherStationary(cv::Rect rectHuman, MotionVec &mvHistory)
+// Returns true if the some of all vector magnitudes within mv are less than the width
+// of the rectangle. In testing, I have found the width to be a very good number to use.
+bool pitcherStationary(cv::Rect rectHuman, MotionVec &mv)
 {
+    // The feet and top of head are cut off sice they seem to have lots of extraneous movement.
     int shorten = rectHuman.height / 6;
     rectHuman.y += shorten;
     rectHuman.height -= shorten * 2;
 
     double thresh = rectHuman.width;
     double weight = 0;
-    for (int i = 0; i < mvHistory.size(); i++)
+    for (int i = 0; i < mv.size(); i++)
     {
-        const cv::Point2f p1 = mvHistory[i].first;
-        const cv::Point2f p2 = mvHistory[i].second;
-        if (movementWithinRectangle(mvHistory[i], rectHuman))
+        const cv::Point2f p1 = mv[i].first;
+        const cv::Point2f p2 = mv[i].second;
+        if (movementWithinRectangle(mv[i], rectHuman))
         {
             weight += distance(p1, p2);
 
@@ -330,14 +235,32 @@ typedef struct {
     unsigned int post, tee, release, follow;
 } SegmentedPitchFrames;
 
-inline double calculateRadians(std::pair<cv::Point2f, cv::Point2f> movement)
+//inline double calculateRadians(std::pair<cv::Point2f, cv::Point2f> movement)
+//{
+//    const double angle = atan2(0 - (movement.second.y - movement.first.y), movement.second.x - movement.first.x);
+//    return angle >= 0.0 ? angle : 6.2831853072 + angle;
+//}
+
+// Calculates a movement line segment's radians from 0 to 2pi.
+inline double calculateRadians(std::pair<cv::Point2f, cv::Point2f> motion)
 {
-    const double angle = atan2(0 - (movement.second.y - movement.first.y), movement.second.x - movement.first.x);
-    return angle >= 0.0 ? angle : 6.2831853072 + angle;
+    // Y is at the top left corner and it must be at the bottom left for atan2.
+    const double angle = atan2f(0 - (motion.second.y - motion.first.y), motion.second.x - motion.first.x);
+
+    // Atan2 returns negative numbers for angles pointing downwards.
+    // I want the angles to be between 0 and 2pi.
+    if (angle < 0)
+    {
+        return 2*3.14159 + angle;
+    }
+    else
+    {
+        return angle;
+    }
 }
 
 // Not inclusive of min and max.
-double calculatePercentOfValidAnglesWithinRectangle(MotionVec &mv, cv::Rect r, double min, double max)
+double calculatePercentWithinRectangle(MotionVec &mv, cv::Rect r, double min, double max)
 {
     unsigned int valid = 0, count = 0;
 
@@ -366,7 +289,7 @@ bool pitcherPastPost(MotionVec &history, cv::Rect stationaryRect)
     const double min = 3.5342917353;
     const double max = 5.8904862255;
 
-    double goodBadRatio = calculatePercentOfValidAnglesWithinRectangle(history, stationaryRect, min, max);
+    double goodBadRatio = calculatePercentWithinRectangle(history, stationaryRect, min, max);
     printf("Good Bad Percent: %0.2f\n", goodBadRatio);
     return goodBadRatio > minPercent;
 }
@@ -385,10 +308,10 @@ unsigned int findPostFrameIndex(std::vector<MotionVec> &histories, cv::Rect stat
     const size_t firstLoopIndex = histories.size()-2;
     for (size_t i = firstLoopIndex; i > start; --i)
     {
-        double percent = calculatePercentOfValidAnglesWithinRectangle(histories[i],
-                                                                      stationaryRect,
-                                                                      strictlyDownMin,
-                                                                      strictlyDownMax);
+        double percent = calculatePercentWithinRectangle(histories[i],
+                                                         stationaryRect,
+                                                         strictlyDownMin,
+                                                         strictlyDownMax);
         if (maxPercentDown > percent)
         {
             return (unsigned int)i;
@@ -399,101 +322,22 @@ unsigned int findPostFrameIndex(std::vector<MotionVec> &histories, cv::Rect stat
 }
 
 
-bool pitcherPastLegDown(MotionVec &mv, cv::Rect stationaryRect)
-{
-
-    const double maxPercent = 0.15;
-
-    // these two values are between 9𝜋/8 and 15𝜋/8
-    const double min = 3.14159;
-    const double max = 5.8904862255;
-
-    double percent = calculatePercentOfValidAnglesWithinRectangle(mv, stationaryRect, min, max);
-    printf("Good Bad Percent: %0.2f\n", percent);
-    return percent < maxPercent;
-}
-
-
-bool pitcherPastTee(MotionVec &mv, cv::Rect stationaryRect)
-{
-    // Find downwards motion outside and left of rectangle.
-    cv::Rect outsideRect(stationaryRect.x + int(stationaryRect.width*0.75),
-                         stationaryRect.y + stationaryRect.height/5,
-                         stationaryRect.width,
-                         stationaryRect.height/2);
-
-    // Must be pointing towards the west.
-    const double minPercent = 0.40;
-    const double min = 2.3561944902;
-    const double max = 3.926990817;
-    const double percent = calculatePercentOfValidAnglesWithinRectangle(mv, outsideRect, min, max);
-    printf("The percent value in 'past tee' is %0.2f\n", percent);
-    return percent > minPercent;
-}
-
-bool pitcherAtTeePosition(MotionVec &mv, cv::Rect stationaryRect)
-{
-    stationaryRect.height /= 2;
-
-    const double minValidPercent = 0.90;
-
-    const double min1 = -100;
-    const double max1 = 2.3561944902;
-    const double min2 = 5.4977871438;
-    const double max2 = 100; // some number past 2pi.
-
-    const double percent1 = calculatePercentOfValidAnglesWithinRectangle(mv, stationaryRect, min1, max1);
-    const double percent2 = calculatePercentOfValidAnglesWithinRectangle(mv, stationaryRect, min2, max2);
-    const double percent = percent1 + percent2;
-    printf("Pitcher At Tee percent %0.4f\n", percent);
-    return percent > minValidPercent;
-}
-
-
-// PASS IN TIME MOTION VEC
-bool pitcherAtReleasePosition(MotionVec &mvTime, cv::Rect stationaryRect)
-{
-    cv::Rect armRoi(stationaryRect.x + stationaryRect.width,
-                    stationaryRect.y,
-                    stationaryRect.width,
-                    stationaryRect.height);
-
-    const double minPercent = 0.60;
-    const double min = 3.14159;
-    const double max = 5.8904862255;
-    const double percent = calculatePercentOfValidAnglesWithinRectangle(mvTime, stationaryRect, min, max);
-    printf("Percent of arm release going down %0.4f\n", percent);
-    return percent > minPercent;
-}
-
-
-inline double correctRadians(std::pair<cv::Point2f, cv::Point2f> motion)
-{
-    double angle = atan2f(0 - (motion.second.y - motion.first.y), motion.second.x - motion.first.x);
-    if (angle < 0)
-    {
-        angle = 2*3.14159 + angle;
-    }
-    return angle;
-}
-
-
 bool pitcherLegUp(MotionVec &mv, cv::Rect stationaryRect, const double minPercentUp)
 {
+    // valid angles between pi/4 and pi.
     double min = 0.7853981634;
     double max = 3.14159;
 
-    int valid = 1;
     int good = 0;
-
+    int total = 0.001; // solves divide by zero error.
 
     for (int i = 0; i < mv.size(); i++)
     {
         if (movementWithinRectangle(mv[i] , stationaryRect ))
         {
-            valid++;
+            total++;
 
-            double angle = correctRadians(mv[i]);
+            double angle = calculateRadians(mv[i]);
 
             if (min < angle && angle < max)
             {
@@ -502,122 +346,158 @@ bool pitcherLegUp(MotionVec &mv, cv::Rect stationaryRect, const double minPercen
         }
     }
 
-    const double percent = double(good)/double(valid);
-    printf("Good %d, Valid %d, Percent %0.2f\n", good, valid, percent);
+    const double percent = double(good)/double(total);
+    printf("Up %d, Total %d, Percent %0.2f\n", good, total, percent);
 
     return percent > minPercentUp;
 }
 
+//// Normalizes vectors and adds them together to find the average direction.
+//// Thought it would be helpful but I never needed it. I'm keeping it here
+//// commented out so you can see the math.
+//double averageAngleWithinRect(MotionVec &mv, cv::Rect r)
+//{
+//    // Create a unit vector and then find its angle.
+//    float xtot = 0, ytot = 0;
+//
+//    for (int i = 0; i < mv.size(); i++)
+//    {
+//        if (movementWithinRectangle(mv[i], r))
+//        {
+//            xtot += mv[i].second.x - mv[i].first.x;
+//            ytot += mv[i].second.y - mv[i].first.y;
+//        }
+//    }
+//    return correctRadians({cv::Point2f(0.f,0.f),cv::Point2f(xtot,ytot)});
+//}
 
-double averageAngleWithinRect(MotionVec &mv, cv::Rect r)
+// Fills |raw| and |history| using mv.
+void processMotion(MotionVec mv,
+                   const double minimumDistance,
+                   std::vector<MotionVec> &raw,
+                   const unsigned int historyCount,
+                   std::vector<MotionVec> &history)
 {
-    // Create a unit vector and then find its angle.
-    float xtot = 0, ytot = 0;
+    raw.push_back(MotionVec());
+    history.push_back(MotionVec());
 
+    // Throw out vectors too small.
     for (int i = 0; i < mv.size(); i++)
     {
-        if (movementWithinRectangle(mv[i], r))
+        if (minimumDistance <= distance(mv[i].first,
+                                        mv[i].second))
         {
-            xtot += mv[i].second.x - mv[i].first.x;
-            ytot += mv[i].second.y - mv[i].first.y;
+            raw.back().push_back(mv[i]);
+            history.back().push_back(mv[i]);
         }
     }
-    return correctRadians({cv::Point2f(0.f,0.f),cv::Point2f(xtot,ytot)});
+
+    const size_t stop = raw.size()-1;
+    for (size_t i = stop > historyCount? stop-historyCount : 0; stop != i; ++i)
+    {
+        for (int j = 0; j < raw[i].size(); ++j)
+        {
+            // Put the motion history into the history vector.
+            history.back().push_back(raw[i][j]);
+        }
+    }
 }
 
-
-// Goes back in time from the release and tries to find the tee position.
-unsigned int pitcherTeeFrameNumber(std::vector<MotionVec> &motions,
-                                   cv::Rect stationaryRect,
-                                   unsigned int post)
+cv::Rect pitcherMoundPosition(cv::Mat &frame,
+                              cv::HOGDescriptor &hogd,
+                              std::vector<MotionVec> &history)
 {
-    cv::Rect body(stationaryRect.x + stationaryRect.width/2,
-                  stationaryRect.y,
-                  stationaryRect.width * 0.75,
-                  stationaryRect.height);
 
-    std::vector<double> averages;
+    // Find the pitcher.
+    cv::Rect rectHuman(0,0,0,0);
+    static cv::Rect cachedRectHuman = cv::Rect(0,0,1,1);
 
-    size_t size = motions.size();
-    for (size_t i = size-2; i > post; i--)
+    // Save time by not finding the human if there is motion. When watching the output, I noticed
+    // that the hog never captures the human during movement. It does well capturing humans when
+    // they are in an upright position such as when they are about to enter the post position.
+    if (pitcherStationary(cachedRectHuman, history.back()))
     {
-        averages.push_back(averageAngleWithinRect(motions[i], body));
-        printf("Frame %lu average: %0.2f\n", i+SKIP_NUM_FRAMES, averages.back());
+        rectHuman = findValidHuman(hogd, frame);
     }
 
-    return 0;
+    const bool humanRectNotZero = rectHuman.x != 0 && rectHuman.y != 0 && rectHuman.width != 0 && rectHuman.height != 0;
+    if (humanRectNotZero)
+    {
+        // Make sure the rectangle hasn't shrunken by an impossible amount. This sometimes happens with the HOG.
+        // It will highlight the upper torso or a leg or the head. It's unpredictable.
+        const double maxRectShrinkPercent = 0.75;
+        const double currentRectShrinkPercent = double(rectHuman.height) / cachedRectHuman.height;
+        if (currentRectShrinkPercent > maxRectShrinkPercent)
+        {
+            cachedRectHuman = rectHuman;
+        }
+    }
+
+    return cachedRectHuman;
 }
 
-
-typedef struct {
-    unsigned int start, post, tee, release, follow, end;
-} PitchCandidate;
-
-
-void showAllPitches(std::vector<PitchCandidate > pitches, std::string path)
+cv::Mat drawOutputFrame(cv::Mat &frame,
+                        cv::Rect rectHuman,
+                        std::vector<MotionVec> &history,
+                        OpticalFlow &oflow,
+                        unsigned int frameNumber,
+                        unsigned int framesSinceStationary,
+                        unsigned int totalPitchesFound)
 {
-    cv::VideoCapture vc;
-    cv::Mat firstFrame;
-    vc.open(path);
-    vc.grab();
-    vc.retrieve(firstFrame);
 
-    if (firstFrame.empty())
+    // DRAW THE COMPASS.
+    MotionVec mvDrawn = history.back();
+    for (unsigned int i = 0; i < COMPASS_ROSE; i++)
     {
-        printf("Could not open the first frame");
+        mvDrawn.push_back(compass[i]);
     }
 
+    cv::Mat drawnFrame = oflow.drawMotion(mvDrawn, frame);
 
-    unsigned int count = 0;
-    for (int i = 0; i < pitches.size(); i++)
+    cv::Mat outputFrame;
+    if (0 != drawnFrame.cols % 2)
     {
-        while (count != pitches[i].start-1)
-        {
-            count++;
-            vc.grab();
-        }
-
-        std::vector<cv::Mat > pitchFrames;
-        PitchComposite comp(firstFrame.cols, firstFrame.rows, CV_8UC3);
-        while (count != pitches[i].end)
-        {
-            count++;
-            cv::Mat frame;
-            if (!vc.grab() || !vc.retrieve(frame) || frame.empty())
-            {
-                printf("An error occurred getting frame");
-                break;
-            }
-
-            cv::Mat frameClone = frame.clone();
-
-            cv::imshow("Segmented Video", frameClone);
-            //cv::waitKey();
-
-            // We write the image later.
-            pitchFrames.push_back(frameClone);
-
-            if (count == pitches[i].post)
-            {
-                comp.setPosition(frameClone, PositionPost);
-            }
-            else if (count == pitches[i].tee)
-            {
-                comp.setPosition(frameClone, PositionTee);
-            }
-            else if (count == pitches[i].release)
-            {
-                comp.setPosition(frameClone, PositionRelease);
-            }
-            else if (count == pitches[i].follow)
-            {
-                comp.setPosition(frameClone, PositionFollow);
-            }
-        }
-
-        cv::imshow("Segments", comp.compose());
-        cv::waitKey();
+        outputFrame = drawnFrame(cv::Rect(0,0,drawnFrame.cols-1, drawnFrame.rows));
     }
+    else
+    {
+        outputFrame = drawnFrame;
+    }
+
+    char text[100];
+    bzero(text, 100);
+    sprintf(text, "Frame %d", frameNumber);
+    cv::putText(outputFrame, text, cv::Point(0,10), CV_FONT_HERSHEY_PLAIN, 1, cv::Scalar(0,0,0));
+
+    if (framesSinceStationary != frameNumber)
+    {
+        bzero(text, 100);
+        sprintf(text, "Frames since stationary: %d", framesSinceStationary);
+        cv::putText(outputFrame, text, cv::Point(0,30), CV_FONT_HERSHEY_PLAIN, 1, cv::Scalar(0,0,0));
+    }
+
+    bzero(text, 100);
+    sprintf(text, "Pitches Found: %d", totalPitchesFound);
+    cv::putText(outputFrame, text, cv::Point(0,60), CV_FONT_HERSHEY_PLAIN, 2, cv::Scalar(0,0,0));
+
+    // Put a border around the human on the pitchers mound.
+    cv::Rect borderInside, borderMiddle, borderOutside;
+    borderInside = rectHuman;
+    borderMiddle = rectHuman;
+    borderMiddle.x -= 1;
+    borderMiddle.y -= 1;
+    borderMiddle.width += 2;
+    borderMiddle.height += 2;
+    borderOutside = rectHuman;
+    borderOutside.x -= 2;
+    borderOutside.y -= 2;
+    borderOutside.width += 4;
+    borderOutside.height += 4;
+    drawBWRectangle(outputFrame, borderInside, true);
+    drawBWRectangle(outputFrame, borderMiddle, false);
+    drawBWRectangle(outputFrame, borderOutside, true);
+
+    return outputFrame;
 }
 
 
@@ -626,236 +506,139 @@ void showAllPitches(std::vector<PitchCandidate > pitches, std::string path)
 int main(int argc, const char * argv[])
 {
     int totalPitchesFound = 0;
-    int fps = 30, skip = 0;
     std::string path;
+
+    if (0 != system("which -s ffmpeg"))
+    {
+        printf("Fatal warning\n");
+        printf("ffmpeg must be installed and reachable by the $PATH environment variable.\n");
+        printf("Download and install the free and open source program here:\n");
+        printf("https://www.ffmpeg.org/download.html\n");
+        printf("Or use the homebrew package manager (the method I prefer)\n");
+        printf("$ brew install ffmpeg –with-faac -with-fdk-aac\n");
+        exit(1);
+    }
 
     switch (argc)
     {
-        case 0:
+        default:
         case 1:
-            path = VIDEO_LOC;
-            fps = INPUT_VIDEO_FPS;
-            skip = SKIP_NUM_FRAMES;
+            printf("Please run from the command line like so:\n");
+            printf("$ ./cyyoung <video_path>\n");
+            printf("The second two arguments are optional.\n");
+            printf("Videos will be written to <video_path>.pitch%%d.mp4\n");
+            printf("Image segments will be written to <video_path>.pitch%%d.position%%d.png\n");
+            exit(0);
             break;
-        case 4:
-            skip = atoi(argv[3]);
-        case 3:
-            fps = atoi(argv[2]);
         case 2:
             path = argv[1];
             break;
-        default:
-            printf("The input should be '<video path> [<fps> [<start frame>]]'\n");
-            return 1;
     }
-
-
-    if (2 <= argc)
-    {
-        path = argv[1];
-        fps = atoi(argv[2]);
-    }
-
-    else
-    {
-        path = VIDEO_LOC;
-        fps = INPUT_VIDEO_FPS;
-    }
-
-    // |pitches| is what we use to generate composites at the end!
-    std::vector<PitchCandidate> pitches;
 
     cv::HOGDescriptor hogd;
     hogd.setSVMDetector(cv::HOGDescriptor::getDefaultPeopleDetector());
+
+
     cv::VideoCapture vc;
     cv::Mat firstFrame;
     vc.open(path);
-
-    printf("Frames per second %0.2f\n", vc.get(CV_CAP_PROP_FPS));
-
-    //vc.open(0);
     vc.grab();
     vc.retrieve(firstFrame);
-//    const cv::Point2i roiOrigin = { 2 * firstFrame.cols / 7, 0};
-//    const cv::Size2i roiSize = { 4 * firstFrame.cols / 7, firstFrame.rows};
-//    const cv::Rect roi = cv::Rect(roiOrigin, roiSize);
 
-    double ffscale = 480.0 / firstFrame.rows;
-    int ffheight = 480;
-    int ffwidth = ffscale*firstFrame.cols;
+    // Resize the frame to 480p. 'ff' here stands fo first frame.
+    double f1scale = 480.0 / firstFrame.rows;
+    int f1height = 480;
+    int f1width = f1scale*firstFrame.cols;
 
-    if (0 != ffwidth % 2)
+    // Make sure the width divides by two evenly. It mitigates bug I ran into.
+    if (0 != f1width % 2)
     {
-        ffwidth -= 1;
+        f1width -= 1;
     }
 
-    cv::resize(firstFrame, firstFrame, cv::Size(ffwidth,ffheight));
+    cv::resize(firstFrame, firstFrame, cv::Size(f1width,f1height));
 
+    // The roi is legacy code that I don't want to break yet.
     const cv::Rect roi = cv::Rect(cv::Point2i(0,0),cv::Size2i(firstFrame.cols, firstFrame.rows));
     OpticalFlow oflow = OpticalFlow(firstFrame, roi);
     firstFrame.deallocate();
 
-
-    //std::string file;
-    //std::getline(std::cin, file);
-
     cv::namedWindow("Computer Vision", CV_WINDOW_KEEPRATIO);
-    cv::namedWindow("Time Motion", CV_WINDOW_KEEPRATIO);
+    cv::namedWindow("Key Positions",   CV_WINDOW_KEEPRATIO);
 
-    std::vector<std::pair<unsigned int, unsigned int>> pitch;
-    std::vector<MotionVec> timeMotionVecVec;
-    std::vector<MotionVec> historyMotionVecVec;
+    // Used for creating a clip and segmented image
     std::vector<cv::Mat> cachedFrames;
+    unsigned int cachedPostIndex         = 0,
+                 cachedTeeIndex          = 0,
+                 cachedReleaseIndex      = 0,
+                 cachedFollowIndexFuture = 0,
+                 cachedLegUpCount        = 0;
+
+    // Allows the program to know the start of a pitch.
+    unsigned int framesSinceStationary = 0;
+
+    // These states have been shown to eliminate greater than 99% of false positives.
+    bool foundLegUpBeforePost = false,
+         foundPost = false,
+         foundRelease = false;
+
+    // Where the raw captured optical flow motion goes.
+    std::vector<MotionVec> timeMotionVecVec;
+
+    // Combined optical flow motion. Used to find leg up and leg down.
+    std::vector<MotionVec> historyMotionVecVec;
+
+    // Iterate through the video frame by frame.
     while (vc.grab())
     {
         const unsigned int frameNumber = countFrame();
-        //timeMotionVecVec.push_back({{{0.f,0.f},{0.f,0.f}}});
 
         printf("Frame number %d\n", frameNumber);
-
-        // This is for convienence.
-        if (skip > frameNumber)
-        {
-            continue;
-        }
-
-        if (fps == 60 && 0 == frameNumber%2)
-        {
-            continue;
-        }
 
         cv::Mat frame;
         if (!vc.retrieve(frame) || frame.empty())
         {
-            break;
+            printf("CYYOUNG couldn't read next frame.\n");
+            exit(1);
+            return 1;
         }
         else
         {
-            cv::resize(frame, frame, cv::Size(ffwidth, ffheight));
+            // This size speeds up each frame considerably.
+            cv::resize(frame, frame, cv::Size(f1width, f1height));
         }
 
         // perform optical flow.
-        MotionVec mv = oflow.feed(frame);
+        processMotion(oflow.feed(frame),
+                      MIN_TRACK_DISTANCE,
+                      timeMotionVecVec,
+                      MOTION_HISTORY_IMAGE,
+                      historyMotionVecVec);
 
-        MotionVec mvThresholded, mvDrawn, mvHistory;
+        // The rectangle on the pitcher mound surrounding the pitcher.
+        cv::Rect pitcherMoundBound = pitcherMoundPosition(frame, hogd, historyMotionVecVec);
 
 
-        // NOW DRAW THE mvThresholded VECTORS INTO mvDrawn
-        for (int i = 0; i < mv.size(); i++)
+        // The pitcher will not be stationary for the duration of the pitch. In the future, this should be smarter and take into
+        // account the chance that the pitcher pauses at the top of the post. Every instance where a pitch isn't captured occured
+        // when the pitcher pauses at the top of the post. This is something to look into but it adds too much stateism to the
+        // program and dramatically complicates things.  This would also draw in more false positives and I'm happy with the less
+        // than one percent false positive rate the algorithm is currently achieving.
+        if (pitcherStationary(pitcherMoundBound, historyMotionVecVec.back()))
         {
-            if (MIN_TRACK_DISTANCE <= distance(mv[i].first,
-                                               mv[i].second))
-            {
-                mvThresholded.push_back(mv[i]);
-            }
-        }
-
-        // Push the thresholded values into an array of all motion vectors.
-        timeMotionVecVec.push_back(mvThresholded);
-
-        for (int i = 0; i < mvThresholded.size(); i++)
-        {
-            mvHistory.push_back(mvThresholded[i]);
-            mvDrawn.push_back(mvThresholded[i]);
-        }
-
-        const size_t stop = timeMotionVecVec.size()-1;
-        long i = stop - MOTION_HISTORY_IMAGE;
-        for (long i = stop > MOTION_HISTORY_IMAGE? stop-MOTION_HISTORY_IMAGE : 0; stop != i; i++)
-        {
-            for (int j = 0; j < timeMotionVecVec[i].size(); j++)
-            {
-                mvHistory.push_back(timeMotionVecVec[i][j]);
-                mvDrawn.push_back(timeMotionVecVec[i][j]);
-            }
-        }
-
-        // Push the motion history into the history vector.
-        historyMotionVecVec.push_back(mvHistory);
-
-
-        // Find the pitcher.
-        cv::Rect rectHuman(0,0,0,0);
-        //cv::Rect rectHuman = detectFace(frame);
-        bool foundNewRectangle = false;
-        // divide by zero error mitigation.
-        static cv::Rect drawnBorder1(0,0,1,1), drawnBorder2(0,0,1,1), drawnBorder3(0,0,1,1);
-        static unsigned int framesSinceStationary = 0;
-        double displacement = 0;
-
-        if (pitcherStationary(drawnBorder1, historyMotionVecVec.back()))
-        {
-            rectHuman = findValidHuman(hogd, frame);
-        }
-
-        const double rectShrinkTolerance = 0.75;
-        const bool validNewRect = double(rectHuman.height) / drawnBorder1.height > rectShrinkTolerance;
-        if (rectHuman.x != 0 && rectHuman.y != 0 && rectHuman.width != 0 && rectHuman.height != 0 && validNewRect)
-        {
-            foundNewRectangle = true;
-
-            displacement = calculateRectHorizontalDisplacement(drawnBorder1, rectHuman);
-
-            drawnBorder1 = cv::Rect(int(rectHuman.x),
-                                    int(rectHuman.y),
-                                    int(rectHuman.width),
-                                    int(rectHuman.height));
-
-            drawnBorder2 = cv::Rect(int(rectHuman.x)      - 1,
-                                    int(rectHuman.y)      - 1,
-                                    int(rectHuman.width)  + 2,
-                                    int(rectHuman.height) + 2);
-
-            drawnBorder3 = cv::Rect(int(rectHuman.x)      - 2,
-                                    int(rectHuman.y)      - 2,
-                                    int(rectHuman.width)  + 4,
-                                    int(rectHuman.height) + 4);
-        }
-
-
-        static bool foundLegUpBeforePost = false,
-                    foundPost = false,
-                    foundTee = false,
-                    foundRelease = false,
-                    foundFollow = false;
-
-        static int validLegUpCount = 0;
-
-        static unsigned int startFrameIndex = 0,
-                            postFrameIndex = 0,
-                            teeFrameIndex = 0,
-                            releaseFrameIndex = 0,
-                            followFrameIndex = 0;
-
-        static unsigned int cachedPostIndex = 0,
-                            cachedTeeIndex = 0,
-                            cachedReleaseIndex = 0,
-                            cachedFollowIndexFuture = 0;
-
-
-        static cv::Mat positions[4];
-
-
-        if (pitcherStationary(drawnBorder1, mvHistory))
-        {
-            framesSinceStationary = 0;
-            startFrameIndex = (unsigned int)timeMotionVecVec.size();
+            framesSinceStationary   = 0;
+            cachedLegUpCount        = 0;
+            cachedPostIndex         = 0;
+            cachedTeeIndex          = 0;
+            cachedReleaseIndex      = 0;
+            cachedFollowIndexFuture = 0;
 
             cachedFrames.clear();
             cachedFrames.push_back(frame.clone());
 
             foundLegUpBeforePost = false;
-            foundPost = false;
-            foundTee = false;
-            foundRelease = false;
-            foundFollow = false;
-
-            cachedPostIndex = 0;
-            cachedTeeIndex = 0;
-            cachedReleaseIndex = 0;
-            cachedFollowIndexFuture = 0;
-
-            validLegUpCount = 0;
+            foundPost            = false;
+            foundRelease         = false;
         }
         else
         {
@@ -863,22 +646,23 @@ int main(int argc, const char * argv[])
             cachedFrames.push_back(frame.clone());
 
 
-            // The first leg up must occur quickly.
-            const int stationaryNoiseBufferIndex = 3;
+            // The first leg up must occur quickly. If it doesn't, then anything past the
+            // following if statement will not run.
             const int maximumLegUpIndex = 10;
+            const int stationaryNoiseBufferIndex = 3;
             bool withinLegUpWindow = framesSinceStationary > stationaryNoiseBufferIndex &&
                                      framesSinceStationary < maximumLegUpIndex;
 
             if (!foundLegUpBeforePost && withinLegUpWindow)
             {
-                if (pitcherLegUp(historyMotionVecVec.back(), drawnBorder1, 0.75))
+                if (pitcherLegUp(historyMotionVecVec.back(), pitcherMoundBound, 0.75))
                 {
-                    ++validLegUpCount;
-
-                    printf("Found leg up %d\n", validLegUpCount);
+                    ++cachedLegUpCount;
 
                     const int minValidLegUpCount = 4;
-                    if (minValidLegUpCount == validLegUpCount)
+
+                    printf("Found leg up %d of %d\n", cachedLegUpCount, minValidLegUpCount);
+                    if (minValidLegUpCount == cachedLegUpCount)
                     {
                         foundLegUpBeforePost = true;
                     }
@@ -888,49 +672,45 @@ int main(int argc, const char * argv[])
             // FIND THE POST POSITION
             if (foundLegUpBeforePost && !foundPost)
             {
-                if (pitcherPastPost(historyMotionVecVec.back(), drawnBorder1))
+                if (pitcherPastPost(historyMotionVecVec.back(), pitcherMoundBound))
                 {
-                    unsigned int pitchStart = (unsigned int)historyMotionVecVec.size()-framesSinceStationary;
-                    postFrameIndex = findPostFrameIndex(historyMotionVecVec, drawnBorder1, pitchStart);
-                    //postFrameNumber += SKIP_NUM_FRAMES;
-                    if (0 != postFrameIndex)
+                    size_t pitchStart = historyMotionVecVec.size()-framesSinceStationary;
+                    size_t postIndex = findPostFrameIndex(historyMotionVecVec,
+                                                          pitcherMoundBound,
+                                                          (unsigned int)pitchStart);
+                    if (0 != postIndex)
                     {
                         foundPost = true;
-                        cachedPostIndex = postFrameIndex - pitchStart;
+                        cachedPostIndex = (unsigned int)(postIndex - pitchStart);
                     }
                 }
             }
 
-
+            // Find release.
             if (foundPost && !foundRelease)
             {
-                if (pitcherLegUp(timeMotionVecVec.back(), drawnBorder1, 0.45))
+                if (pitcherLegUp(timeMotionVecVec.back(), pitcherMoundBound, 0.45))
                 {
-                    printf("Found leg up again");
                     foundRelease = true;
 
-                    cachedReleaseIndex = framesSinceStationary;
-                    cachedTeeIndex = framesSinceStationary - 8;
-                    cachedFollowIndexFuture = framesSinceStationary + 8;
+                    // this number was chosen by testing.
+                    const int teeFollowOffset = 8;
 
-//                    releaseFrameIndex = (unsigned int)timeMotionVecVec.size()*(fps/30);
-//                    teeFrameIndex = (releaseFrameIndex - 8)*(fps/30);
-//                    followFrameIndex = (releaseFrameIndex + 8)*(fps/30);
-//
-//                    PitchCandidate pc = {SKIP_NUM_FRAMES + startFrameIndex*(fps/30),
-//                        SKIP_NUM_FRAMES + postFrameIndex*(fps/30),
-//                        SKIP_NUM_FRAMES + teeFrameIndex,
-//                        SKIP_NUM_FRAMES + releaseFrameIndex,
-//                        SKIP_NUM_FRAMES + followFrameIndex,
-//                        SKIP_NUM_FRAMES + (unsigned int)(timeMotionVecVec.size() + 30)*(fps/30)};
-//                    pitches.push_back(pc);
-
+                    printf("Found leg up again. In %d frames the pitch is clipped.\n", teeFollowOffset);
+                    cachedReleaseIndex      = framesSinceStationary;
+                    cachedTeeIndex          = framesSinceStationary - teeFollowOffset;
+                    cachedFollowIndexFuture = framesSinceStationary + teeFollowOffset;
                 }
             }
 
-            if (foundRelease && framesSinceStationary == cachedFollowIndexFuture)
+            // When the following is true we have successully reached all segments of a pitch.
+            // I output a clip and image segments to the file system.
+            if (foundRelease && cachedFollowIndexFuture == framesSinceStationary)
             {
                 totalPitchesFound++;
+                printf("Pitch %d has been found.\n", totalPitchesFound);
+
+                cv::Mat positions[4];
                 positions[0] = cachedFrames[cachedPostIndex];
                 positions[1] = cachedFrames[cachedTeeIndex];
                 positions[2] = cachedFrames[cachedReleaseIndex];
@@ -938,90 +718,92 @@ int main(int argc, const char * argv[])
 
                 for (int i = 0; i < 4; i++)
                 {
-                    printf("Key position %d", i+1);
+                    printf("Key position %d\n", i+1);
                     cv::imshow("Key Positions", positions[i]);
+
+                    #if WRITE_TO_FILE_SYSTEM
+                    // Save all the pitch positions.
+                    char positionPath[path.size()+50];
+                    bzero(positionPath, path.size()+50);
+                    sprintf(positionPath, "%s.pitch%d.position%d.png", path.c_str(), totalPitchesFound, i+1);
+                    cv::imwrite(positionPath, positions[i]);
+                    printf("Wrote: %s\n", positionPath);
+                    #endif
+
+                    printf("\nPress any key to continue.\n");
                     cv::waitKey();
                 }
+
+                #if WRITE_TO_FILE_SYSTEM
+                const size_t outPathSize = path.size()+50;
+                const size_t numCachedFrames = cachedFrames.size();
+                for (int i = 0; i < numCachedFrames; i++)
+                {
+                    char outPath[outPathSize];
+                    bzero(outPath, outPathSize);
+                    sprintf(outPath, "%s.%d.frame%06d.png", path.c_str(), totalPitchesFound, i+1);
+                    cv::imwrite(outPath, cachedFrames[i]);
+                    printf("Wrote: %s\n", outPath);
+                }
+                cv::Mat frameBuffer;
+                const size_t stop = numCachedFrames + 30;
+                for (size_t i = numCachedFrames; i < stop && vc.grab() && vc.retrieve(frameBuffer) && !frameBuffer.empty(); ++i)
+                {
+                    countFrame();
+                    cv::resize(frameBuffer, frameBuffer, cv::Size(f1width,f1height));
+                    char outPath[outPathSize];
+                    bzero(outPath, outPathSize);
+                    sprintf(outPath, "%s.%d.frame%06d.png", path.c_str(), totalPitchesFound, int(i+1));
+                    cv::imwrite(outPath, frameBuffer);
+                    printf("Wrote: %s\n", outPath);
+                }
+
+                // Use ffmpeg to stitch the frames together into a clip.
+                char ffmpegSystemCall[path.size()+500];
+                bzero(ffmpegSystemCall, path.size()+500);
+                sprintf(ffmpegSystemCall,
+                        "ffmpeg -framerate 15 -i %s.%d.frame%%06d.png -c:v libx264 -r 15 -pix_fmt yuv420p %s.pitch%d.mp4",
+                        path.c_str(),
+                        totalPitchesFound,
+                        path.c_str(),
+                        totalPitchesFound);
+                if (0 != system(ffmpegSystemCall))
+                {
+                    printf("Something might have went wrong when invoking ffmpeg.\n");
+                }
+                printf("Wrote: %s.pitch%d.mp4\n", path.c_str(), totalPitchesFound);
+
+
+                // Clean up the intermediate images.
+                char rmSystemCall[outPathSize];
+                bzero(rmSystemCall, outPathSize);
+                sprintf(rmSystemCall, "rm %s.%d.frame*.png", path.c_str(), totalPitchesFound);
+                if (0 != system(rmSystemCall))
+                {
+                    printf("Error cleaning up intermediate frames.\n");
+                }
+                else
+                {
+                    printf("Successfully removed intermediate pitch frames.\n");
+                }
+                #endif
             }
-
         }
 
-        drawBWRectangle(frame, drawnBorder1, true);
-        drawBWRectangle(frame, drawnBorder2, false);
-        drawBWRectangle(frame, drawnBorder3, true);
+        // Make a pretty output image to show the user that the program is working correctly.
+        // I don't want to hide the magic!
+        cv::Mat show = drawOutputFrame(frame,
+                                       pitcherMoundBound,
+                                       historyMotionVecVec,
+                                       oflow,
+                                       frameNumber,
+                                       framesSinceStationary,
+                                       totalPitchesFound);
 
-
-
-        // Name the saved image
-        char outPath[50];
-        bzero(outPath, 50);
-        sprintf(outPath, "%sframe%06d.png", WRITE_ABSOLUTE_DIR, frameNumber);
-
-        //cv::Mat frameClone = frame;
-        //cv::imshow("Time Motion", oflow.drawMotion(timeMotionVecVec.back(), frameClone));
-
-        // DRAW THE COMPASS.
-        for (unsigned int i = 0; i < COMPASS_ROSE; i++)
-        {
-            mvDrawn.push_back(compass[i]);
-        }
-
-        cv::Mat drawnFrame = oflow.drawMotion(mvDrawn, frame);
-
-        cv::Mat outputFrame;
-        if (0 != drawnFrame.cols % 2)
-        {
-            outputFrame = drawnFrame(cv::Rect(0,0,drawnFrame.cols-1, drawnFrame.rows));
-        }
-        else
-        {
-            outputFrame = drawnFrame;
-        }
-
-        char text[100];
-        bzero(text, 100);
-        sprintf(text, "Frame %d", frameNumber);
-        cv::putText(outputFrame, text, cv::Point(0,10), CV_FONT_HERSHEY_PLAIN, 1, cv::Scalar(0,0,0));
-
-        if (framesSinceStationary != frameNumber)
-        {
-            bzero(text, 100);
-            sprintf(text, "Frames since stationary: %d", framesSinceStationary);
-            cv::putText(outputFrame, text, cv::Point(0,30), CV_FONT_HERSHEY_PLAIN, 1, cv::Scalar(0,0,0));
-        }
-
-        bzero(text, 100);
-        sprintf(text, "Pitches Found: %d", totalPitchesFound);
-        cv::putText(outputFrame, text, cv::Point(0,70), CV_FONT_HERSHEY_PLAIN, 1, cv::Scalar(0,0,0));
-
-        cv::imshow("Computer Vision", outputFrame);
-
-//        #if WRITE_VIDEO_OUTPUT_AND_CLEAN_DIR
-//        bzero(text, 100);
-//        sprintf(text, "Displacement: %0.2f pixels", displacement);
-//        cv::putText(outputFrame, text, cv::Point(0, 50), CV_FONT_HERSHEY_PLAIN, 1, cv::Scalar(0,0,0));
-//        cv::imwrite(cv::string(outPath), outputFrame);
-//        printf("Wrote:%s\n", outPath);
-//        #endif
-
-        printf("Done with frame %d\n", frameNumber);
+        cv::imshow("Computer Vision", show);
     }
 
     printf("CYYOUNG COMPLETED SUCCESSFULLY\n");
-
-    // Stitch all the frames together and output into a new video.
-//    #if WRITE_VIDEO_OUTPUT_AND_CLEAN_DIR
-//    // Use ffmpeg to stitch the frames together.
-//    char ffmpegSystemCall[500];
-//    bzero(ffmpegSystemCall, 500);
-//    sprintf(ffmpegSystemCall, "ffmpeg -framerate 15 -i %sframe%%06d.png -c:v libx264 -r 15 -pix_fmt yuv420p %s%s",
-//            WRITE_ABSOLUTE_DIR, WRITE_ABSOLUTE_DIR, OUTPUT_VIDEO_NAME);
-//    system(ffmpegSystemCall);
-//
-//    // Clean up the folder
-//    bzero(ffmpegSystemCall, 500);
-//    sprintf(ffmpegSystemCall, "rm %sframe*.png", WRITE_ABSOLUTE_DIR);
-//    #endif
-
+    exit(0);
     return 0;
 }
