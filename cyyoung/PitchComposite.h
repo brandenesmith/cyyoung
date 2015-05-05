@@ -30,7 +30,7 @@ private:
     int imageWidth, imageHeight, imageChannelType;
     cv::Mat images[PositionCount];
 public:
-    PitchComposite(const int inputWidth = 1280, const int inputHeight = 720, const int inputChannelType = CV_8UC3);
+    PitchComposite(const int inputWidth, const int inputHeight, const int inputChannelType);
 
     void setPosition(cv::Mat image, Position p);
     cv::Mat compose();
