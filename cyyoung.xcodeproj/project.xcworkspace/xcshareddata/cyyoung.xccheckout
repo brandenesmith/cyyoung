@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>IDESourceControlProjectFavoriteDictionaryKey</key>
+	<false/>
+	<key>IDESourceControlProjectIdentifier</key>
+	<string>C93BEF15-7295-48B3-859B-E9B87A0FEAAD</string>
+	<key>IDESourceControlProjectName</key>
+	<string>cyyoung</string>
+	<key>IDESourceControlProjectOriginsDictionary</key>
+	<dict>
+		<key>396E500D7096595982A8D88CE91C14943CFCAF49</key>
+		<string>https://github.com/brandenesmith/cyyoung</string>
+	</dict>
+	<key>IDESourceControlProjectPath</key>
+	<string>cyyoung.xcodeproj</string>
+	<key>IDESourceControlProjectRelativeInstallPathDictionary</key>
+	<dict>
+		<key>396E500D7096595982A8D88CE91C14943CFCAF49</key>
+		<string>../..</string>
+	</dict>
+	<key>IDESourceControlProjectURL</key>
+	<string>https://github.com/brandenesmith/cyyoung</string>
+	<key>IDESourceControlProjectVersion</key>
+	<integer>111</integer>
+	<key>IDESourceControlProjectWCCIdentifier</key>
+	<string>396E500D7096595982A8D88CE91C14943CFCAF49</string>
+	<key>IDESourceControlProjectWCConfigurations</key>
+	<array>
+		<dict>
+			<key>IDESourceControlRepositoryExtensionIdentifierKey</key>
+			<string>public.vcs.git</string>
+			<key>IDESourceControlWCCIdentifierKey</key>
+			<string>396E500D7096595982A8D88CE91C14943CFCAF49</string>
+			<key>IDESourceControlWCCName</key>
+			<string>cyyoung</string>
+		</dict>
+	</array>
+</dict>
+</plist>

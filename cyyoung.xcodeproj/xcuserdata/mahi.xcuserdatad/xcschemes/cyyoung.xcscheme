@@ -45,9 +45,10 @@
       launchStyle = "0"
       useCustomWorkingDirectory = "NO"
       buildConfiguration = "Debug"
-      ignoresPersistentStateOnLaunch = "NO"
+      ignoresPersistentStateOnLaunch = "YES"
       debugDocumentVersioning = "YES"
-      allowLocationSimulation = "YES">
+      allowLocationSimulation = "YES"
+      viewDebuggingEnabled = "No">
       <BuildableProductRunnable>
          <BuildableReference
             BuildableIdentifier = "primary"

@@ -66,6 +66,7 @@
 		147269841AE30B73001660CE /* OpticalFlow.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 147269821AE30B73001660CE /* OpticalFlow.cpp */; };
 		14890B801AC882AC00AF7E21 /* CompositeImageTests.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 14890B7E1AC882AC00AF7E21 /* CompositeImageTests.cpp */; };
 		14890B831AC882D400AF7E21 /* PitchComposite.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 14890B811AC882D400AF7E21 /* PitchComposite.cpp */; };
+		14894A441AEAB839004466E2 /* CYMath.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 14894A421AEAB839004466E2 /* CYMath.cpp */; };
 		14D0E2281AD05940006DB2A9 /* VideoSplitter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 14D0E2261AD05940006DB2A9 /* VideoSplitter.cpp */; };
 		14D0E22B1AD06455006DB2A9 /* VideoSplitterTests.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 14D0E2291AD06455006DB2A9 /* VideoSplitterTests.cpp */; };
 /* End PBXBuildFile section */
@@ -147,10 +148,37 @@
 		14890B7F1AC882AC00AF7E21 /* CompositeImageTests.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CompositeImageTests.h; sourceTree = "<group>"; };
 		14890B811AC882D400AF7E21 /* PitchComposite.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PitchComposite.cpp; sourceTree = "<group>"; };
 		14890B821AC882D400AF7E21 /* PitchComposite.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PitchComposite.h; sourceTree = "<group>"; };
+		14894A421AEAB839004466E2 /* CYMath.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = CYMath.cpp; sourceTree = "<group>"; };
+		14894A431AEAB839004466E2 /* CYMath.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CYMath.h; sourceTree = "<group>"; };
 		14D0E2261AD05940006DB2A9 /* VideoSplitter.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = VideoSplitter.cpp; sourceTree = "<group>"; };
 		14D0E2271AD05940006DB2A9 /* VideoSplitter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = VideoSplitter.h; sourceTree = "<group>"; };
 		14D0E2291AD06455006DB2A9 /* VideoSplitterTests.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = VideoSplitterTests.cpp; sourceTree = "<group>"; };
 		14D0E22A1AD06455006DB2A9 /* VideoSplitterTests.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = VideoSplitterTests.h; sourceTree = "<group>"; };
+		14F0D6421AF2B3440034B5EA /* haarcascade_eye.xml */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = haarcascade_eye.xml; sourceTree = "<group>"; };
+		14F0D6431AF2B3440034B5EA /* haarcascade_eye_tree_eyeglasses.xml */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = haarcascade_eye_tree_eyeglasses.xml; sourceTree = "<group>"; };
+		14F0D6441AF2B3440034B5EA /* haarcascade_frontalface_alt.xml */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = haarcascade_frontalface_alt.xml; sourceTree = "<group>"; };
+		14F0D6451AF2B3440034B5EA /* haarcascade_frontalface_alt2.xml */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = haarcascade_frontalface_alt2.xml; sourceTree = "<group>"; };
+		14F0D6461AF2B3440034B5EA /* haarcascade_frontalface_alt_tree.xml */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = haarcascade_frontalface_alt_tree.xml; sourceTree = "<group>"; };
+		14F0D6471AF2B3440034B5EA /* haarcascade_frontalface_default.xml */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = haarcascade_frontalface_default.xml; sourceTree = "<group>"; };
+		14F0D6481AF2B3440034B5EA /* haarcascade_fullbody.xml */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = haarcascade_fullbody.xml; sourceTree = "<group>"; };
+		14F0D6491AF2B3440034B5EA /* haarcascade_lefteye_2splits.xml */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = haarcascade_lefteye_2splits.xml; sourceTree = "<group>"; };
+		14F0D64A1AF2B3440034B5EA /* haarcascade_lowerbody.xml */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = haarcascade_lowerbody.xml; sourceTree = "<group>"; };
+		14F0D64B1AF2B3440034B5EA /* haarcascade_mcs_eyepair_big.xml */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = haarcascade_mcs_eyepair_big.xml; sourceTree = "<group>"; };
+		14F0D64C1AF2B3440034B5EA /* haarcascade_mcs_eyepair_small.xml */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = haarcascade_mcs_eyepair_small.xml; sourceTree = "<group>"; };
+		14F0D64D1AF2B3440034B5EA /* haarcascade_mcs_leftear.xml */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = haarcascade_mcs_leftear.xml; sourceTree = "<group>"; };
+		14F0D64E1AF2B3440034B5EA /* haarcascade_mcs_lefteye.xml */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = haarcascade_mcs_lefteye.xml; sourceTree = "<group>"; };
+		14F0D64F1AF2B3440034B5EA /* haarcascade_mcs_mouth.xml */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = haarcascade_mcs_mouth.xml; sourceTree = "<group>"; };
+		14F0D6501AF2B3440034B5EA /* haarcascade_mcs_nose.xml */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = haarcascade_mcs_nose.xml; sourceTree = "<group>"; };
+		14F0D6511AF2B3440034B5EA /* haarcascade_mcs_rightear.xml */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = haarcascade_mcs_rightear.xml; sourceTree = "<group>"; };
+		14F0D6521AF2B3440034B5EA /* haarcascade_mcs_righteye.xml */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = haarcascade_mcs_righteye.xml; sourceTree = "<group>"; };
+		14F0D6531AF2B3440034B5EA /* haarcascade_mcs_upperbody.xml */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = haarcascade_mcs_upperbody.xml; sourceTree = "<group>"; };
+		14F0D6541AF2B3440034B5EA /* haarcascade_profileface.xml */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = haarcascade_profileface.xml; sourceTree = "<group>"; };
+		14F0D6551AF2B3440034B5EA /* haarcascade_righteye_2splits.xml */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = haarcascade_righteye_2splits.xml; sourceTree = "<group>"; };
+		14F0D6561AF2B3440034B5EA /* haarcascade_smile.xml */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = haarcascade_smile.xml; sourceTree = "<group>"; };
+		14F0D6571AF2B3440034B5EA /* haarcascade_upperbody.xml */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = haarcascade_upperbody.xml; sourceTree = "<group>"; };
+		14F0D65B1AF2B3440034B5EA /* lbpcascade_frontalface.xml */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = lbpcascade_frontalface.xml; sourceTree = "<group>"; };
+		14F0D65C1AF2B3440034B5EA /* lbpcascade_profileface.xml */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = lbpcascade_profileface.xml; sourceTree = "<group>"; };
+		14F0D65D1AF2B3440034B5EA /* lbpcascade_silverware.xml */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = lbpcascade_silverware.xml; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -221,6 +249,8 @@
 		145FBF491ABDC45400A0DDE1 = {
 			isa = PBXGroup;
 			children = (
+				14F0D6411AF2B3440034B5EA /* haarcascades */,
+				14F0D65A1AF2B3440034B5EA /* lbpcascades */,
 				14D0E2251ACF0302006DB2A9 /* src */,
 				145FBFCB1AC09E8700A0DDE1 /* opencv */,
 				145FBF541ABDC45400A0DDE1 /* cyyoung */,
@@ -252,6 +282,8 @@
 				147269831AE30B73001660CE /* OpticalFlow.h */,
 				14D0E2291AD06455006DB2A9 /* VideoSplitterTests.cpp */,
 				14D0E22A1AD06455006DB2A9 /* VideoSplitterTests.h */,
+				14894A421AEAB839004466E2 /* CYMath.cpp */,
+				14894A431AEAB839004466E2 /* CYMath.h */,
 			);
 			path = cyyoung;
 			sourceTree = "<group>";
@@ -324,6 +356,47 @@
 			name = src;
 			sourceTree = SOURCE_ROOT;
 		};
+		14F0D6411AF2B3440034B5EA /* haarcascades */ = {
+			isa = PBXGroup;
+			children = (
+				14F0D6421AF2B3440034B5EA /* haarcascade_eye.xml */,
+				14F0D6431AF2B3440034B5EA /* haarcascade_eye_tree_eyeglasses.xml */,
+				14F0D6441AF2B3440034B5EA /* haarcascade_frontalface_alt.xml */,
+				14F0D6451AF2B3440034B5EA /* haarcascade_frontalface_alt2.xml */,
+				14F0D6461AF2B3440034B5EA /* haarcascade_frontalface_alt_tree.xml */,
+				14F0D6471AF2B3440034B5EA /* haarcascade_frontalface_default.xml */,
+				14F0D6481AF2B3440034B5EA /* haarcascade_fullbody.xml */,
+				14F0D6491AF2B3440034B5EA /* haarcascade_lefteye_2splits.xml */,
+				14F0D64A1AF2B3440034B5EA /* haarcascade_lowerbody.xml */,
+				14F0D64B1AF2B3440034B5EA /* haarcascade_mcs_eyepair_big.xml */,
+				14F0D64C1AF2B3440034B5EA /* haarcascade_mcs_eyepair_small.xml */,
+				14F0D64D1AF2B3440034B5EA /* haarcascade_mcs_leftear.xml */,
+				14F0D64E1AF2B3440034B5EA /* haarcascade_mcs_lefteye.xml */,
+				14F0D64F1AF2B3440034B5EA /* haarcascade_mcs_mouth.xml */,
+				14F0D6501AF2B3440034B5EA /* haarcascade_mcs_nose.xml */,
+				14F0D6511AF2B3440034B5EA /* haarcascade_mcs_rightear.xml */,
+				14F0D6521AF2B3440034B5EA /* haarcascade_mcs_righteye.xml */,
+				14F0D6531AF2B3440034B5EA /* haarcascade_mcs_upperbody.xml */,
+				14F0D6541AF2B3440034B5EA /* haarcascade_profileface.xml */,
+				14F0D6551AF2B3440034B5EA /* haarcascade_righteye_2splits.xml */,
+				14F0D6561AF2B3440034B5EA /* haarcascade_smile.xml */,
+				14F0D6571AF2B3440034B5EA /* haarcascade_upperbody.xml */,
+			);
+			name = haarcascades;
+			path = "../Downloads/opencv-2.4.9/data/haarcascades";
+			sourceTree = "<group>";
+		};
+		14F0D65A1AF2B3440034B5EA /* lbpcascades */ = {
+			isa = PBXGroup;
+			children = (
+				14F0D65B1AF2B3440034B5EA /* lbpcascade_frontalface.xml */,
+				14F0D65C1AF2B3440034B5EA /* lbpcascade_profileface.xml */,
+				14F0D65D1AF2B3440034B5EA /* lbpcascade_silverware.xml */,
+			);
+			name = lbpcascades;
+			path = "../Downloads/opencv-2.4.9/data/lbpcascades";
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -381,6 +454,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				14D0E2281AD05940006DB2A9 /* VideoSplitter.cpp in Sources */,
+				14894A441AEAB839004466E2 /* CYMath.cpp in Sources */,
 				14890B801AC882AC00AF7E21 /* CompositeImageTests.cpp in Sources */,
 				145FBF5E1ABDCDE000A0DDE1 /* Segment.cpp in Sources */,
 				14890B831AC882D400AF7E21 /* PitchComposite.cpp in Sources */,
@@ -428,7 +502,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 10.10;
 				MTL_ENABLE_DEBUG_INFO = YES;
-				ONLY_ACTIVE_ARCH = YES;
+				ONLY_ACTIVE_ARCH = NO;
 				SDKROOT = macosx;
 			};
 			name = Debug;
@@ -463,6 +537,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 10.10;
 				MTL_ENABLE_DEBUG_INFO = NO;
+				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
 			};
 			name = Release;
@@ -478,7 +553,9 @@
 				LIBRARY_SEARCH_PATHS = (
 					/usr/local/lib/,
 					/usr/local/Cellar/opencv/2.4.9/lib,
+					"/Users/mahi/Downloads/opencv-2.4.9/3rdparty/lib",
 				);
+				ONLY_ACTIVE_ARCH = NO;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
@@ -494,7 +571,9 @@
 				LIBRARY_SEARCH_PATHS = (
 					/usr/local/lib/,
 					/usr/local/Cellar/opencv/2.4.9/lib,
+					"/Users/mahi/Downloads/opencv-2.4.9/3rdparty/lib",
 				);
+				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;

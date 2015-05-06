@@ -44,7 +44,7 @@ bool CompositeImageTests::testValidUse2()
     printf("d stride %d\n", int(d.step));
 
 
-    PitchComposite pc(a.cols, a.rows);
+    PitchComposite pc(a.cols, a.rows, CV_8UC3);
     pc.setPosition(a, PositionPost);
     pc.setPosition(b, PositionTee);
     pc.setPosition(c, PositionRelease);
@@ -95,7 +95,7 @@ bool CompositeImageTests::testValidUse1()
         }
     }
 
-    PitchComposite pc;
+    PitchComposite pc(0,0,0);
 
     pc.setPosition(imgs[PositionPost], PositionPost);
     pc.setPosition(imgs[PositionTee], PositionTee);
